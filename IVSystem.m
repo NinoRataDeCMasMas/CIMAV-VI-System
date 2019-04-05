@@ -1,4 +1,5 @@
 
+
 function varargout = IVSystem(varargin)
 % IVSYSTEM MATLAB code for IVSystem.fig
 %      IVSYSTEM, by itself, creates a new IVSYSTEM or raises the existing
@@ -78,6 +79,12 @@ function closeButton_Callback(hObject, eventdata, handles)
 % hObject    handle to closeButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+    device = handles.device;
+    supply = handles.supply;    
+    fclose(supply);
+    disp('close power supply.');
+    fclose(device);
+    disp('close device.');    
     close all;
 
 % --- Executes on button press in disconnectDeviceButton.
@@ -93,7 +100,30 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+    %% Connect the device with computer
+    device = serial('COM15','BaudRate',115200);
+    % open device
+    fopen(device);
+    % check the port
+    disp('open device.');
+    disp(device);
 
+    
+    %% Connect the power supply with computer
+    supply = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
+    % open device
+    fopen(supply);
+    % check the port
+    disp('open power supply.');
+    fprintf(supply, '*IDN?');
+    disp(fscanf(supply));
+    
+    %% global variables
+    handles.device = device;
+    handles.supply = supply;
+    guidata(hObject,handles);
+    
+    
 % --- Executes on button press in sweepButton.
 function sweepButton_Callback(hObject, eventdata, handles)
 % hObject    handle to sweepButton (see GCBO)
@@ -104,20 +134,20 @@ function sweepButton_Callback(hObject, eventdata, handles)
     %
     % Reading the system values.
     %
+    supply       = handles.supply; 
     minVoltage   = str2double(get(handles.minEdit,   'String'));
     steps        = str2double(get(handles.deltaEdit, 'String'));
     maxVoltage   = str2double(get(handles.maxEdit,   'String'));
 
-    if (minVoltage >= -5.0 && minVoltage <= 5.0) && (maxVoltage > minVoltage) && (steps > 0)
+    if (minVoltage >= 0.0 && minVoltage <= 7.5) && (maxVoltage > minVoltage) && (steps > 0)
         % 
         % Do the mesure.
         %
         
-        
         min   = minVoltage;
         delta = (maxVoltage - minVoltage)/steps;
         suppliedVoltage = min;
-        
+                       
         for i = 0:steps
             
             if handles.abortMeasure.Value == 1
@@ -126,6 +156,11 @@ function sweepButton_Callback(hObject, eventdata, handles)
             end  
             set(handles.consoleLog, 'String', min);
             min = min + delta;
+            
+            s = strcat('SOUR:VOLT', 32, num2str(min));
+            disp(s);
+            fprintf(supply, s);
+            
             suppliedVoltage = [suppliedVoltage min];
             set(handles.measureTable, 'data', suppliedVoltage');
             pause(1);
@@ -134,7 +169,9 @@ function sweepButton_Callback(hObject, eventdata, handles)
         set(handles.consoleLog, 'String', 'error de intervalo');
     end
 
-    guidata(hObject, handles);
+    %% global variables
+    handles.supply = supply;
+    guidata(hObject,handles);
 
 function minEdit_Callback(hObject, eventdata, handles)
 % hObject    handle to minEdit (see GCBO)
