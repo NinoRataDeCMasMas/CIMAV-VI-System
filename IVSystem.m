@@ -82,9 +82,9 @@ function closeButton_Callback(hObject, eventdata, handles)
     device = handles.device;
     supply = handles.supply;    
     fclose(supply);
-    disp('close power supply.');
+    disp('<*> close power supply.');
     fclose(device);
-    disp('close device.');    
+    disp('<*> close device.');    
     close all;
 
 % --- Executes on button press in disconnectDeviceButton.
@@ -105,7 +105,8 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     % open device
     fopen(device);
     % check the port
-    disp('open device.');
+    disp('<*> open device.');
+    fprintf(device, '*RST');
     disp(device);
 
     
@@ -114,7 +115,7 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     % open device
     fopen(supply);
     % check the port
-    disp('open power supply.');
+    disp('<*> open power supply.');
     fprintf(supply, '*IDN?');
     disp(fscanf(supply));
     
@@ -134,7 +135,8 @@ function sweepButton_Callback(hObject, eventdata, handles)
     %
     % Reading the system values.
     %
-    supply       = handles.supply; 
+    supply       = handles.supply;
+    device       = handles.device;
     minVoltage   = str2double(get(handles.minEdit,   'String'));
     steps        = str2double(get(handles.deltaEdit, 'String'));
     maxVoltage   = str2double(get(handles.maxEdit,   'String'));
@@ -148,7 +150,7 @@ function sweepButton_Callback(hObject, eventdata, handles)
         delta = (maxVoltage - minVoltage)/steps;
         suppliedVoltage = min;
                        
-        for i = 0:steps
+        for i = 0:steps - 1
             
             if handles.abortMeasure.Value == 1
                 set(handles.consoleLog, 'String', 'barrido interrumpido');
@@ -156,10 +158,14 @@ function sweepButton_Callback(hObject, eventdata, handles)
             end  
             set(handles.consoleLog, 'String', min);
             min = min + delta;
-            
+            % Set the supply voltage 
             s = strcat('SOUR:VOLT', 32, num2str(min));
             disp(s);
             fprintf(supply, s);
+            % Get the volage measure
+            fprintf(device, 'MEAS:VOLT?');
+            res = fscanf(device);
+            disp(res);
             
             suppliedVoltage = [suppliedVoltage min];
             set(handles.measureTable, 'data', suppliedVoltage');
