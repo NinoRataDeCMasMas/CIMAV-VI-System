@@ -1,5 +1,4 @@
 
-
 function varargout = IVSystem(varargin)
 % IVSYSTEM MATLAB code for IVSystem.fig
 %      IVSYSTEM, by itself, creates a new IVSYSTEM or raises the existing
@@ -108,7 +107,9 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     disp('<*> open device.');
     fprintf(device, '*RST');
     disp(device);
-
+    fprintf(device, 'CONF:VOLT');
+    fprintf(device, 'CONF?');
+    disp(fscanf(device));
     
     %% Connect the power supply with computer
     supply = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
@@ -117,6 +118,8 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     % check the port
     disp('<*> open power supply.');
     fprintf(supply, '*IDN?');
+    disp(fscanf(supply));
+    fprintf(supply,'OUTP:STAT 1');    
     disp(fscanf(supply));
     
     %% global variables
@@ -145,7 +148,6 @@ function sweepButton_Callback(hObject, eventdata, handles)
         % 
         % Do the mesure.
         %
-        
         min   = minVoltage;
         delta = (maxVoltage - minVoltage)/steps;
         suppliedVoltage = min;
@@ -160,13 +162,12 @@ function sweepButton_Callback(hObject, eventdata, handles)
             min = min + delta;
             % Set the supply voltage 
             s = strcat('SOUR:VOLT', 32, num2str(min));
-            disp(s);
             fprintf(supply, s);
             % Get the volage measure
             fprintf(device, 'MEAS:VOLT?');
             res = fscanf(device);
             disp(res);
-            
+            % Print values on table
             suppliedVoltage = [suppliedVoltage min];
             set(handles.measureTable, 'data', suppliedVoltage');
             pause(1);
