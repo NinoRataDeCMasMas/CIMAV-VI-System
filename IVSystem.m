@@ -79,12 +79,16 @@ function closeButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
     device = handles.device;
-    supply = handles.supply;    
+    supply = handles.supply;
+    
+    % Set the supply voltage 
+    s = strcat('SOUR:VOLT', 32, num2str(0.0));
+    fprintf(supply, s);
+    
     fclose(supply);
-    disp('<*> close power supply.');
     fclose(device);
-    disp('<*> close device.');    
-    close all;
+    set(handles.consoleLog, 'String', '>> INSTRUMENTOS DESCONECTADOS');    
+    % close all;
 
 % --- Executes on button press in disconnectDeviceButton.
 function disconnectDeviceButton_Callback(hObject, eventdata, handles)
@@ -104,24 +108,19 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     % open device
     fopen(device);
     % check the port
-    disp('<*> open device.');
     fprintf(device, '*RST');
-    disp(device);
     fprintf(device, 'CONF:VOLT');
-    fprintf(device, 'CONF?');
-    disp(fscanf(device));
+    % fprintf(device, 'CONF?');
     
     %% Connect the power supply with computer
     supply = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
     % open device
     fopen(supply);
     % check the port
-    disp('<*> open power supply.');
     fprintf(supply, '*IDN?');
-    disp(fscanf(supply));
-    fprintf(supply,'OUTP:STAT 1');    
-    disp(fscanf(supply));
+    fprintf(supply,'OUTP:STAT 1');
     
+    set(handles.consoleLog, 'String', '>> INSTRUMENTOS CONECTADOS');    
     %% global variables
     handles.device = device;
     handles.supply = supply;
@@ -150,30 +149,36 @@ function sweepButton_Callback(hObject, eventdata, handles)
         %
         min   = minVoltage;
         delta = (maxVoltage - minVoltage)/steps;
-        suppliedVoltage = min;
-                       
+        V0 = min;
+        V1 = min;
+        
         for i = 0:steps - 1
             
             if handles.abortMeasure.Value == 1
-                set(handles.consoleLog, 'String', 'barrido interrumpido');
+                set(handles.consoleLog, 'String', '>> BARRIDO INTERRUMPIDO');
                 break;
-            end  
-            set(handles.consoleLog, 'String', min);
+            end
+            set(handles.consoleLog, 'String', '>> INICIANDO BARRIDO');
             min = min + delta;
             % Set the supply voltage 
             s = strcat('SOUR:VOLT', 32, num2str(min));
             fprintf(supply, s);
             % Get the volage measure
             fprintf(device, 'MEAS:VOLT?');
-            res = fscanf(device);
+            tmp = fscanf(device);
+            disp(tmp);
+            idx = find(tmp == ',');
+            res = str2double(tmp(1:idx(1) - 4));
             disp(res);
             % Print values on table
-            suppliedVoltage = [suppliedVoltage min];
-            set(handles.measureTable, 'data', suppliedVoltage');
+            V0   = [V0; min];
+            V1   = [V1; res];
+            data = [V0, V1];
+            set(handles.measureTable, 'data', data);
             pause(1);
         end
     else
-        set(handles.consoleLog, 'String', 'error de intervalo');
+        set(handles.consoleLog, 'String', '>> ERROR DE INTERVALO');
     end
 
     %% global variables
