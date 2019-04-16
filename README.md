@@ -8,5 +8,5 @@ El sistema se compone de los siguientes equipos:
 * Multimetro HP 34401A
 
 todos ellos controlados a traves de una interfaz de usuario programada en matlab
-![](https://github.com/NinoRataDeCMasMas/CIMAV-VI-System/blob/master/images/GUI.png)
+![](https://github.com/NinoRataDeCMasMas/CIMAV-VI-System/blob/master/image/GUI.png)
 
