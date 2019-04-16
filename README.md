@@ -18,7 +18,7 @@ Mediante los botones _conectar_ y _desconectar_ podremos conectar y desconectar 
 ### Parametros de barrido
 ![](https://github.com/NinoRataDeCMasMas/CIMAV-VI-System/blob/master/images/sweep.png)
 
-Se pide al usuario proporcionar tanto los voltajes maximo y minimo a generar por la fuente de poder, ademas del numero de divisiones que hara el barrido.
+Se pide al usuario proporcionar tanto los voltajes maximo y minimo a generar por la fuente de poder, ademas del numero de divisiones que hara el barrido. Mientras la marca de _abortar_ este seleccionada el barrido actual sera detenido.
 
 ### Guardado de los datos
 ![](https://github.com/NinoRataDeCMasMas/CIMAV-VI-System/blob/master/images/dataValues.png)
