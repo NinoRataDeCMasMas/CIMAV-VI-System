@@ -1,4 +1,4 @@
-# Sistema de curvas VI para la medicion de celdas solres y semiconductores nanoestructurados
+# Sistema de curvas VI para la medicion de celdas solares y semiconductores nanoestructurados
 El presente codigo constituye la interfaz de usuario para la medicion de parametros de corriente y voltaje sobre celdas solres y semiconductores nanoestructurados.
 
 ## Descripcion del sistema
