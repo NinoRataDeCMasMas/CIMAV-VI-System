@@ -150,7 +150,7 @@ function sweepButton_Callback(hObject, eventdata, handles)
     maxVoltage   = str2double(get(handles.maxEdit,   'String'));
     
     %% Measure algotirhm
-    if (minVoltage >= 0.0 && minVoltage <= 7.5) && (maxVoltage > minVoltage) && (steps > 0)
+    if (minVoltage >= 0.0 && minVoltage <= 15.0) && (maxVoltage > minVoltage) && (steps > 0)
         % Generate steps
         min   = minVoltage;
         delta = (maxVoltage - minVoltage)/steps;
@@ -337,10 +337,11 @@ function wirteDataButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
     data = handles.data;
-    path = get(handles.pathText,     'String');
-    name = get(handles.filenameText, 'String');
+    filter = {'*.txt';'*.csv';'*.*'};
+    [filename, path] = uiputfile(filter);
+    
     %% Save data in file
-    csvwrite(strcat(path, name),data);
+    csvwrite(strcat(path, filename),data);
     set(handles.consoleLog, 'String', '>> DATOS GUARDADOS');
     
 function pathText_Callback(hObject, eventdata, handles)

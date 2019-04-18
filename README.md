@@ -23,4 +23,4 @@ Se pide al usuario proporcionar tanto los voltajes maximo y minimo a generar por
 ### Guardado de los datos
 ![](https://github.com/NinoRataDeCMasMas/CIMAV-VI-System/blob/master/images/dataValues.png)
 
-Los datos generados por el barrido pueden ser guardados en un archivo de texto mediante el uso del boton _guardar datos_, el cual sera ubicado en la ruta descrita en el campo _ruta del archivo_ y tomara el nombre proporcionado por el campo _nombre del archivo_.
+Los datos generados por el barrido pueden ser guardados en un archivo de texto mediante el uso del boton _guardar datos_.
