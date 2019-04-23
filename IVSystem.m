@@ -23,7 +23,7 @@ function varargout = IVSystem(varargin)
 
     % Edit the above text to modify the response to help IVSystem
 
-    % Last Modified by GUIDE v2.5 16-Apr-2019 14:52:23
+    % Last Modified by GUIDE v2.5 23-Apr-2019 17:12:28
 
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -105,7 +105,7 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     voltCom = get(handles.voltCom, 'String');
     currCom = get(handles.currCom, 'String');
     
-    %% Connect the devices with computer
+    % Connect the devices with computer
     voltimeter  = serial(voltCom,'BaudRate',115200);
     amperimeter = serial(currCom,'BaudRate',  9600);
     % Open devices
@@ -117,7 +117,7 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     fprintf(amperimeter,'SYSTEM:REMOTE');
     fprintf(amperimeter,'*RST');
     
-    %% Connect the power supply with computer
+    % Connect the power supply with computer
     supply = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
     % open device
     fopen(supply);
@@ -128,11 +128,13 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     s = strcat('SOUR:VOLT', 32, num2str(0.0));
     fprintf(supply, s);
     
-    %% global variables
-    set(handles.consoleLog, 'String', '>> INSTRUMENTOS CONECTADOS');    
+    % global variables
+    offset = str2double(get(handles.manualEdit,   'String'));
+    set(handles.consoleLog, 'String', strcat('>> INSTRUMENTOS CONECTADOS', strcat(10,strcat('>> OFFSET (V): ', num2str(offset)))));    
+    handles.offset      = offset;
     handles.voltimeter  = voltimeter;
     handles.amperimeter = amperimeter;
-    handles.supply = supply;
+    handles.supply      = supply;
     guidata(hObject,handles);
     
 % --- Executes on button press in sweepButton.
@@ -140,24 +142,34 @@ function sweepButton_Callback(hObject, eventdata, handles)
 % hObject    handle to sweepButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-    %% Devices
+    % Devices
     supply       = handles.supply;
     voltimeter   = handles.voltimeter;
     amperimeter  = handles.amperimeter;
-    %% GUI values
-    minVoltage   = str2double(get(handles.minEdit,   'String'));
+    % GUI values
+    offset       = str2double(get(handles.manualEdit,'String'));
+    minVoltage   = str2double(get(handles.minEdit,   'String')) + offset;
     steps        = str2double(get(handles.deltaEdit, 'String'));
-    maxVoltage   = str2double(get(handles.maxEdit,   'String'));
+    maxVoltage   = str2double(get(handles.maxEdit,   'String')) + offset;
     
-    %% Measure algotirhm
-    if (minVoltage >= 0.0 && minVoltage <= 15.0) && (maxVoltage > minVoltage) && (steps > 0)
+    % Measure algotirhm
+    if (minVoltage >= 3.0 && minVoltage <= 20.0) && (maxVoltage > minVoltage) && (steps > 0)
         % Generate steps
         min   = minVoltage;
         delta = (maxVoltage - minVoltage)/steps;
-        % Create displays of measures
-        voltSupply   = min;
-        voltMeasured = min;
-        currMeasured = 0.0;
+        % Create displays of measures 
+        s = strcat('SOUR:VOLT', 32, num2str(min));
+        fprintf(supply, s);        
+        voltSupply = min - offset;
+        
+        fprintf(voltimeter, 'MEAS:VOLT?');
+        tmp  = fscanf(voltimeter);
+        idx  = find(tmp == ',');
+        voltMeasured = str2double(tmp(1:idx(1) - 4));
+        
+        fprintf(amperimeter, 'MEAS:CURR:DC?');
+        tmp  = fscanf(amperimeter);
+        currMeasured = str2double(tmp);
         
         for i = 0:steps - 1
             
@@ -171,19 +183,19 @@ function sweepButton_Callback(hObject, eventdata, handles)
             s = strcat('SOUR:VOLT', 32, num2str(min));
             fprintf(supply, s);
             
-            %% Volage measured (string processing)
+            % Volage measured (string processing)
             fprintf(voltimeter, 'MEAS:VOLT?');
             tmp  = fscanf(voltimeter);
             idx  = find(tmp == ',');
             volt = str2double(tmp(1:idx(1) - 4));
             
-            %% Current measured (string processing)
+            % Current measured (string processing)
             fprintf(amperimeter, 'MEAS:CURR:DC?');
             tmp  = fscanf(amperimeter);
             curr = str2double(tmp);
             
-            %% Print values on table
-            voltSupply   = [voltSupply; min];
+            % Print values on table
+            voltSupply   = [voltSupply; min - offset];
             voltMeasured = [voltMeasured; volt];
             currMeasured = [currMeasured; curr];           
             data = [voltSupply, voltMeasured, currMeasured];
@@ -191,20 +203,23 @@ function sweepButton_Callback(hObject, eventdata, handles)
             set(handles.measureTable, 'data', data);
             pause(1);
         end
-        %% Plot data
+        % Set the supply voltage 
+        s = strcat('SOUR:VOLT', 32, num2str(0.0));
+        fprintf(supply, s);
+        
+        % Plot data
         axes(handles.viAxes);
         plot(voltMeasured, currMeasured, 'b--o');
         grid on;
         xlabel('voltaje')
         ylabel('corriente')
-        
-        
+
         set(handles.consoleLog, 'String', '>> BARRIDO TERMINADO');
     else
         set(handles.consoleLog, 'String', '>> ERROR DE INTERVALO');
     end
 
-    %% global variables
+    % global variables
     handles.voltimeter  = voltimeter;
     handles.amperimeter = amperimeter;
     handles.supply = supply;
@@ -377,6 +392,29 @@ function filenameText_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function filenameText_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to filenameText (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function manualEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to manualEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of manualEdit as text
+%        str2double(get(hObject,'String')) returns contents of manualEdit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function manualEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to manualEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
