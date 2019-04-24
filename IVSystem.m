@@ -23,7 +23,7 @@ function varargout = IVSystem(varargin)
 
     % Edit the above text to modify the response to help IVSystem
 
-    % Last Modified by GUIDE v2.5 23-Apr-2019 17:12:28
+    % Last Modified by GUIDE v2.5 23-Apr-2019 19:49:19
 
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -72,7 +72,6 @@ function varargout = IVSystem_OutputFcn(hObject, eventdata, handles)
     % Get default command line output from handles structure
     varargout{1} = handles.output;
 
-
 % --- Executes on button press in closeButton.
 function closeButton_Callback(hObject, eventdata, handles)
 % hObject    handle to closeButton (see GCBO)
@@ -104,7 +103,7 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
     voltCom = get(handles.voltCom, 'String');
     currCom = get(handles.currCom, 'String');
-    
+    offset = str2double(get(handles.manualEdit,   'String'));    
     % Connect the devices with computer
     voltimeter  = serial(voltCom,'BaudRate',115200);
     amperimeter = serial(currCom,'BaudRate',  9600);
@@ -125,11 +124,10 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     fprintf(supply, '*IDN?');
     fprintf(supply,'OUTP:STAT 1');
     % Set the supply voltage 
-    s = strcat('SOUR:VOLT', 32, num2str(0.0));
+    s = strcat('SOUR:VOLT', 32, num2str(offset));
     fprintf(supply, s);
     
     % global variables
-    offset = str2double(get(handles.manualEdit,   'String'));
     set(handles.consoleLog, 'String', strcat('>> INSTRUMENTOS CONECTADOS', strcat(10,strcat('>> OFFSET (V): ', num2str(offset)))));    
     handles.offset      = offset;
     handles.voltimeter  = voltimeter;
@@ -198,23 +196,27 @@ function sweepButton_Callback(hObject, eventdata, handles)
             voltSupply   = [voltSupply; min - offset];
             voltMeasured = [voltMeasured; volt];
             currMeasured = [currMeasured; curr];           
-            data = [voltSupply, voltMeasured, currMeasured];
+            data = [voltSupply(2:end), voltMeasured(2:end), currMeasured(2:end)];
             % print data
             set(handles.measureTable, 'data', data);
-            pause(1);
+            % pause(1);
         end
         % Set the supply voltage 
-        s = strcat('SOUR:VOLT', 32, num2str(0.0));
+        s = strcat('SOUR:VOLT', 32, num2str(offset));
         fprintf(supply, s);
         
         % Plot data
         axes(handles.viAxes);
-        plot(voltMeasured, currMeasured, 'b--o');
+        plot(voltMeasured(2:end), currMeasured(2:end), 'b--o');
         grid on;
         xlabel('voltaje')
         ylabel('corriente')
 
-        set(handles.consoleLog, 'String', '>> BARRIDO TERMINADO');
+        % Save data in file
+        path = 'C:\Temp\IVSystem\autosave\';
+        filename = strcat(datestr(now,'mmmm_dd_yyyy_HH_MM_SS'),'.csv');
+        csvwrite(strcat(path, filename), data);  
+        set(handles.consoleLog, 'String', strcat('>> BARRIDO TERMINADO', strcat(10,strcat('>> DATOS GUARDADOS EN   ',strcat(path, filename)))));
     else
         set(handles.consoleLog, 'String', '>> ERROR DE INTERVALO');
     end
@@ -355,7 +357,7 @@ function wirteDataButton_Callback(hObject, eventdata, handles)
     filter = {'*.txt';'*.csv';'*.*'};
     [filename, path] = uiputfile(filter);
     
-    %% Save data in file
+    % Save data in file
     csvwrite(strcat(path, filename),data);
     set(handles.consoleLog, 'String', '>> DATOS GUARDADOS');
     
@@ -401,8 +403,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-
 function manualEdit_Callback(hObject, eventdata, handles)
 % hObject    handle to manualEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -423,3 +423,100 @@ function manualEdit_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in cellButton.
+function cellButton_Callback(hObject, eventdata, handles)
+% hObject    handle to cellButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    % Devices
+    supply       = handles.supply;
+    voltimeter   = handles.voltimeter;
+    amperimeter  = handles.amperimeter;
+    % GUI values
+    offset       = str2double(get(handles.manualEdit,'String'));
+    minVoltage   = str2double(get(handles.minEdit,   'String')) + offset;
+    steps        = str2double(get(handles.deltaEdit, 'String'));
+    maxVoltage   = str2double(get(handles.maxEdit,   'String')) + offset;
+    
+    % Measure algotirhm
+    if (minVoltage >= 3.0 && minVoltage <= 20.0) && (maxVoltage > minVoltage) && (steps > 0)
+        % Generate steps
+        min   = minVoltage;
+        delta = (maxVoltage - minVoltage)/steps;
+        % Create displays of measures 
+        s = strcat('SOUR:VOLT', 32, num2str(min));
+        fprintf(supply, s);        
+        voltSupply = min - offset;
+        
+        fprintf(voltimeter, 'MEAS:VOLT?');
+        tmp  = fscanf(voltimeter);
+        idx  = find(tmp == ',');
+        voltMeasured = str2double(tmp(1:idx(1) - 4));
+        
+        fprintf(amperimeter, 'MEAS:CURR:DC?');
+        tmp  = fscanf(amperimeter);
+        currMeasured = str2double(tmp);
+        
+        powMeasured = 0.0;
+        
+        for i = 0:steps - 1
+            
+            if handles.abortMeasure.Value == 1
+                set(handles.consoleLog, 'String', '>> BARRIDO INTERRUMPIDO');
+                break;
+            end
+            set(handles.consoleLog, 'String', '>> REALIZANDO BARRIDO');
+            min = min + delta;
+            % Set the supply voltage 
+            s = strcat('SOUR:VOLT', 32, num2str(min));
+            fprintf(supply, s);
+            
+            % Volage measured (string processing)
+            fprintf(voltimeter, 'MEAS:VOLT?');
+            tmp  = fscanf(voltimeter);
+            idx  = find(tmp == ',');
+            volt = str2double(tmp(1:idx(1) - 4));
+            
+            % Current measured (string processing)
+            fprintf(amperimeter, 'MEAS:CURR:DC?');
+            tmp  = fscanf(amperimeter);
+            curr = str2double(tmp);
+            
+            % Print values on table
+            voltSupply   = [voltSupply; min - offset];
+            voltMeasured = [voltMeasured; volt];
+            currMeasured = [currMeasured; curr];           
+            powMeasured  = [powMeasured; volt*curr];
+            data = [voltSupply(2:end), voltMeasured(2:end), currMeasured(2:end), powMeasured(2:end)];
+            % print data
+            set(handles.measureTable, 'data', data);
+            pause(1);
+        end
+        % Set the supply voltage 
+        s = strcat('SOUR:VOLT', 32, num2str(offset));
+        fprintf(supply, s);
+        
+        % Plot data
+        axes(handles.viAxes);
+        plot(voltMeasured(2:end), currMeasured(2:end), 'b--o', voltMeasured(2:end), powMeasured(2:end), 'r--o');
+        grid on;
+        xlabel('voltaje')
+        ylabel('corriente')
+
+        % Save data in file
+        path = 'C:\Temp\IVSystem\autosave\';
+        filename = strcat(datestr(now,'mmmm_dd_yyyy_HH_MM_SS'),'.csv');
+        csvwrite(strcat(path, filename), data);  
+        set(handles.consoleLog, 'String', strcat('>> BARRIDO TERMINADO', strcat(10,strcat('>> DATOS GUARDADOS EN   ',strcat(path, filename)))));
+    else
+        set(handles.consoleLog, 'String', '>> ERROR DE INTERVALO');
+    end
+
+    % global variables
+    handles.voltimeter  = voltimeter;
+    handles.amperimeter = amperimeter;
+    handles.supply = supply;
+    handles.data = data;
+    guidata(hObject,handles);
