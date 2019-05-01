@@ -23,7 +23,7 @@ function varargout = IVSystem(varargin)
 
     % Edit the above text to modify the response to help IVSystem
 
-    % Last Modified by GUIDE v2.5 23-Apr-2019 19:49:19
+    % Last Modified by GUIDE v2.5 29-Apr-2019 17:43:51
 
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -77,14 +77,14 @@ function closeButton_Callback(hObject, eventdata, handles)
 % hObject    handle to closeButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-    %% Devices
+    % Devices
     supply      = handles.supply;
     voltimeter  = handles.voltimeter;
     amperimeter = handles.amperimeter;
-    %% Set the supply voltage 
+    % Set the supply voltage 
     s = strcat('SOUR:VOLT', 32, num2str(0.0));
     fprintf(supply, s);
-    %% Close the devices
+    % Close the devices
     fclose(supply);
     fclose(voltimeter);
     fclose(amperimeter);
@@ -103,7 +103,8 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
     voltCom = get(handles.voltCom, 'String');
     currCom = get(handles.currCom, 'String');
-    offset = str2double(get(handles.manualEdit,   'String'));    
+    offset  = str2double(get(handles.manualEdit,'String'));
+    
     % Connect the devices with computer
     voltimeter  = serial(voltCom,'BaudRate',115200);
     amperimeter = serial(currCom,'BaudRate',  9600);
@@ -112,10 +113,9 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     fopen(amperimeter);
     % Check the ports
     fprintf(voltimeter, '*RST');
-    fprintf(voltimeter, 'CONF:VOLT');
+    fprintf(voltimeter, 'CONF:VOLT');    
     fprintf(amperimeter,'SYSTEM:REMOTE');
     fprintf(amperimeter,'*RST');
-    
     % Connect the power supply with computer
     supply = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
     % open device
@@ -126,7 +126,7 @@ function connectDeviceButton_Callback(hObject, eventdata, handles)
     % Set the supply voltage 
     s = strcat('SOUR:VOLT', 32, num2str(offset));
     fprintf(supply, s);
-    
+        
     % global variables
     set(handles.consoleLog, 'String', strcat('>> INSTRUMENTOS CONECTADOS', strcat(10,strcat('>> OFFSET (V): ', num2str(offset)))));    
     handles.offset      = offset;
@@ -199,7 +199,7 @@ function sweepButton_Callback(hObject, eventdata, handles)
             data = [voltSupply(2:end), voltMeasured(2:end), currMeasured(2:end)];
             % print data
             set(handles.measureTable, 'data', data);
-            % pause(1);
+            pause(1);
         end
         % Set the supply voltage 
         s = strcat('SOUR:VOLT', 32, num2str(offset));
@@ -520,3 +520,111 @@ function cellButton_Callback(hObject, eventdata, handles)
     handles.supply = supply;
     handles.data = data;
     guidata(hObject,handles);
+
+
+
+function lowerEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to lowerEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of lowerEdit as text
+%        str2double(get(hObject,'String')) returns contents of lowerEdit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function lowerEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to lowerEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function upperEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to upperEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of upperEdit as text
+%        str2double(get(hObject,'String')) returns contents of upperEdit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function upperEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to upperEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in calibrationButton.
+function calibrationButton_Callback(hObject, eventdata, handles)
+% hObject    handle to calibrationButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    % calibration
+    supply      = handles.supply;
+    voltimeter  = handles.voltimeter;    
+    
+    offset = str2double(get(handles.manualEdit, 'String'));    
+    lower  = str2double(get(handles.lowerEdit,  'String'));
+    upper  = str2double(get(handles.upperEdit,  'String'));    
+
+    n = 100.0;
+    tempOffset = offset;
+    
+    set(handles.consoleLog, 'String', '>> CALIBRANDO...');
+    while(n > 0)
+        % Compute the middle point
+        offset = (upper + lower)/2;
+        s = strcat('SOUR:VOLT', 32, num2str(offset));
+        fprintf(supply, s);       
+        
+        % Checking de sign 
+        fprintf(voltimeter, 'MEAS:VOLT?');
+        tmp  = fscanf(voltimeter);
+        idx  = find(tmp == ',');
+        voltMeasured = str2double(tmp(1:idx(1) - 4));
+
+        % Check if the voltaje is aceptable 
+        if voltMeasured >= 0.001 && voltMeasured <= 0.01
+            set(handles.manualEdit, 'String', num2str(offset));
+            set(handles.consoleLog, 'String', strcat('>> EQUIPO CALIBRADO (V): ', num2str(offset)));            
+            break;
+        end        
+        
+        % Choose the way
+        if voltMeasured > 0
+            upper = offset;
+        else
+            lower = offset;
+        end
+        
+        % Iteration complete
+        n = n - 1;
+    end
+
+    % Calibration error
+    if n == 0
+        offset = tempOffset;
+        set(handles.manualEdit, 'String', num2str(offset));
+        set(handles.consoleLog, 'String', '>> ERROR DE CALIBRACION');
+    end
+    
+    % Set the supply voltage 
+    s = strcat('SOUR:VOLT', 32, num2str(offset));
+    fprintf(supply, s);
+    
+    handles.offset = offset;
+    guidata(hObject,handles);    
