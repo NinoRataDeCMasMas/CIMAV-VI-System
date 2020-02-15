@@ -1,6 +1,6 @@
 
 function varargout = IVSystem(varargin)
-    % IVSYSTEM MATLAB code for IVSystem.fig
+% IVSYSTEM MATLAB code for IVSystem.fig
     %      IVSYSTEM, by itself, creates a new IVSYSTEM or raises the existing
     %      singleton*.
     %
@@ -587,10 +587,10 @@ function calibrationButton_Callback(hObject, eventdata, handles)
     set(handles.consoleLog, 'String', '>> CALIBRANDO...');
     while(n > 0)
         % Compute the middle point
-        offset = (upper + lower)/2;
+        offset = (upper + lower)/2; 
         s = strcat('SOUR:VOLT', 32, num2str(offset));
         fprintf(supply, s);       
-        
+
         % Checking de sign 
         fprintf(voltimeter, 'MEAS:VOLT?');
         tmp  = fscanf(voltimeter);
