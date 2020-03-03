@@ -6,7 +6,14 @@ classdef Power_Supply < handle
     methods
         %% --- CONSTRUCTOR
         function obj = Power_Supply()
-            obj.file = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
+            try
+                obj.file = visa('ni', 'USB0::0x05E6::0x2200::9200671::INSTR');
+            catch
+                msgID = 'MYFUN:DriverNotFoud';
+                msg = 'Power supply driver not found.';
+                power_supply_exception = MException(msgID,msg);
+                throw(power_supply_exception);
+            end
         end
         %% --- connecting the supply
         function connect(obj)
@@ -17,7 +24,7 @@ classdef Power_Supply < handle
             fprintf(obj.file,'OUTP:STAT 1');
         end
         %% --- setting voltage
-        function set_voltage(obj, voltage)
+        function set(obj, voltage)
             str = strcat('SOUR:VOLT', 32, num2str(voltage));
             fprintf(obj.file, str);
         end

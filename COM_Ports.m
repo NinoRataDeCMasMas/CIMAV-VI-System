@@ -5,9 +5,13 @@ classdef COM_Ports < handle
     
     methods
         %% --- CONSTRUCTOR
-        function obj = COM_Ports
+        % function obj = COM_Ports...
+        %% --- CHECKING PORTS
+        function checking_ports(obj)
+            obj.ports = {}; % clear the buffer before reading new values
+            
             [~,res] = system('mode');
-            obj.ports = regexp(res,'COM\d+','match')';
-        end        
+            obj.ports = unique(regexp(res,'COM\d+','match'))';            
+        end
     end
 end
